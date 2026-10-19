@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mbc.project.dao.PrepaidDao">
+
+    <!-- 1. 정기권 발매 현황 목록 조회 -->
+    <select id="getPrepaidList" resultType="com.mbc.project.dto.PrepaidDto">
+        SELECT
+            regId AS "regId",
+            userId AS "userId",
+            carNum AS "carNum",
+            ownerName AS "ownerName",
+            startDate AS "startDate",
+            endDate AS "endDate",
+            type,
+            status,
+            createdAt AS "createdAt"
+        FROM prepaid
+        WHERE UPPER(status) = 'APPROVED'
+          AND startDate &lt;= CURRENT_DATE
+          AND endDate &gt;= CURRENT_DATE
+        ORDER BY regId DESC
+    </select>
+
+    <!-- 2. 활성화된 정기권 총 개수 -->
+    <select id="getPrepaidCount" resultType="int">
+        SELECT COUNT(*)
+        FROM prepaid
+        WHERE UPPER(status) = 'APPROVED'
+          AND startDate &lt;= CURRENT_DATE
+          AND endDate &gt;= CURRENT_DATE
+    </select>
+
+    <!-- 3. 로그인 사용자 본인의 정기권 신청/이용 현황 조회 -->
+    <select id="getMyPrepaidList" parameterType="string" resultType="com.mbc.project.dto.PrepaidDto">
+        SELECT
+            regId AS "regId",
+            userId AS "userId",
+            carNum AS "carNum",
+            ownerName AS "ownerName",
+            startDate AS "startDate",
+            endDate AS "endDate",
+            type,
+            status,
+            createdAt AS "createdAt",
+            price
+        FROM prepaid
+        WHERE userId = #{userId}
+        ORDER BY regId DESC
+    </select>
+
+    <!-- 4. 회원 정보 조회 (auth 확인용) -->
+    <select id="getMember" parameterType="string" resultType="com.mbc.project.dto.MemberDto">
+        SELECT *
+        FROM usermember
+        WHERE id = #{id}
+    </select>
+
+    <!-- 5. 정기권 신청 등록 (price 매핑 포함) -->
+    <insert id="insertPrepaid" parameterType="com.mbc.project.dto.PrepaidDto">
+        INSERT INTO prepaid (
+            userId,
+            carNum,
+            ownerName,
+            startDate,
+            endDate,
+            type,
+            price,
+            status,
+            createdAt
+        ) VALUES (
+            #{userId},
+            #{carNum},
+            #{ownerName},
+            #{startDate},
+            #{endDate},
+            #{type},
+            #{price},
+            'requested',
+            NOW()
+        )
+    </insert>
+
+    <!-- 관리자용: 6. 승인 대기 중인 정기권 목록 조회 -->
+    <select id="getPendingList" resultType="com.mbc.project.dto.PrepaidDto">
+        SELECT
+            regId AS "regId",
+            userId AS "userId",
+            carNum AS "carNum",
+            ownerName AS "ownerName",
+            startDate AS "startDate",
+            endDate AS "endDate",
+            type,
+            status,
+            createdAt AS "createdAt"
+        FROM prepaid
+        WHERE UPPER(status) = 'REQUESTED'
+        ORDER BY createdAt ASC
+    </select>
+
+    <!-- 관리자용: 7. 정기권 상태 변경 (승인/거절) -->
+    <update id="updateStatus">
+        UPDATE prepaid
+        SET status = #{status}
+        WHERE regId = #{regId}
+    </update>
+
+    <!-- 8. 특정 회원의 미승인(REQUESTED) 정기권 신청 이력 존재 여부 (중복신청 방지용) -->
+    <select id="hasPendingRequest" parameterType="string" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM prepaid
+            WHERE userId = #{userId}
+              AND UPPER(status) = 'REQUESTED'
+        )
+    </select>
+
+    <!-- 9. 특정 차량이 현재 주차중인지 확인 (정기권 신청 가능 여부 체크용) -->
+    <select id="isCarCurrentlyParked" parameterType="string" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM parking_records
+            WHERE carNum = #{carNum}
+              AND exitTime IS NULL
+        )
+    </select>
+
+</mapper>

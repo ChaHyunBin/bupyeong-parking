@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        
+<mapper namespace="com.mbc.project.dao.MemberDao">
+
+    <!-- 테이블명을 실제 DB에 생성된 usermember로 수정 -->
+    <select id="allmember" resultType="com.mbc.project.dto.MemberDto">
+        select * from usermember
+    </select>
+
+ 	<!--회원가입 	 auth가 null이면 DB 디폴트 동작과 동일하게 3 적용, 2가 넘어오면 2 적용 -->
+	<insert id="addmember" parameterType="com.mbc.project.dto.MemberDto">
+		insert into usermember(id,pw, name, email, carTypes, carNum, storeNum, auth)	
+		values(#{id}, #{pw}, #{name}, #{email}, COALESCE(#{carTypes}, 'general'),
+		 #{carNum}, #{storeNum}, COALESCE(#{auth}, 3))
+	</insert>
+	
+	<!--login-->
+	<select id="login" parameterType="com.mbc.project.dto.MemberDto" resultType="com.mbc.project.dto.MemberDto">
+		select id, name, email, auth, carTypes, carNum, storeNum
+		from usermember
+		where id=#{id} and pw=#{pw}
+	</select>
+	
+	<!--id 중복확인-->
+	<select id="idcheck" parameterType="String" resultType="Integer">
+	select count(*)
+	from usermember
+	where id=#{id}
+ 	</select>
+
+	<!-- 아이디 찾기 (이름 + 이메일) -->
+	<select id="findId" resultType="com.mbc.project.dto.MemberDto">
+		select id, name, email
+		from usermember
+		where name = #{name} and email = #{email}
+	</select>
+	
+
+
+<!-- 상가 소유주 교체: admin으로 등록된 점포만 대상 (이미 임자 있는 점포는 보호) -->
+    <update id="updateStoreOwner">
+    UPDATE stores
+    SET id = #{id}
+    WHERE storeNum = #{storeNum} AND id = 'admin'
+</update>
+
+
+
+
+</mapper>
